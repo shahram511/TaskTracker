@@ -1,0 +1,13 @@
+
+Django>=5.0,<6.0
+djangorestframework
+psycopg2-binary   # درایور اتصال به پستگرس
+django-filter     # برای فیلتر کردن (انجام شده، نشده و...)
+drf-spectacular   # برای مستندات سواگر
+djangorestframework-simplejwt
+pyhton.exe -m pip install --upgrade pip
+pip install celery redis django-celery-beat
+pip install gevent
+pip install python-decouple
+
+

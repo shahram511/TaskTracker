@@ -1,0 +1,17 @@
+#python stuff
+__pycache__/
+*.pyc
+venv/
+env/
+.env
+
+#windows stuff
+Thumbs.db
+Desktop.ini
+
+#IDE stuff
+.vscode/
+.idea/
+
+#database stuff
+db.sqlite3

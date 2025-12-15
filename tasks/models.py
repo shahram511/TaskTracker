@@ -1,7 +1,18 @@
+from enum import unique
 from django.db import models
 from users.models import User
 
 # Create your models here.
+
+class Tag(models.Model):
+    name= models.CharField(max_length=50, unique=True)
+
+    def __str__(self):
+        return self.name
+    class Meta:
+        ordering = ['name']
+
+    
 class Category(models.Model):
     name = models.CharField(max_length=255)
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='categories')
@@ -28,6 +39,7 @@ class Task(models.Model):
         ('medium', 'Medium'),
         ('high', 'High'),
     ]
+    tags=models.ManyToManyField(Tag, blank=True, related_name='tasks')
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='tasks_owner')
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True, related_name='tasks_category')
     title = models.CharField(max_length=255)
@@ -40,6 +52,9 @@ class Task(models.Model):
 
     def __str__(self):
         return self.title
+    
+    
+    
     
 
     

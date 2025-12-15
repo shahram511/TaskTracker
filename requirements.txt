@@ -5,9 +5,12 @@ psycopg2-binary   # درایور اتصال به پستگرس
 django-filter     # برای فیلتر کردن (انجام شده، نشده و...)
 drf-spectacular   # برای مستندات سواگر
 djangorestframework-simplejwt
-pyhton.exe -m pip install --upgrade pip
-pip install celery redis django-celery-beat
-pip install gevent
-pip install python-decouple
+celery==5.4.0
+redis==5.0.1
+django-celery-beat>=2.7.0
+python-decouple
+pillow==12.0.0
+
+# django-cors-headers  # Uncomment if you need CORS for a frontend
 
 

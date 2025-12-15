@@ -1,13 +1,18 @@
 from django.db.models import When, Case, IntegerField
 
-from rest_framework import viewsets, filters
-from rest_framework.response import Response
-from .models import Task, Category
-from .serializers import TaskSerializer, CategorySerializer
-from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.permissions import IsAuthenticated
+from rest_framework import generics, viewsets, filters, status
+from rest_framework.response import Response
+from rest_framework.decorators import action, permission_classes
+from rest_framework.views import APIView
+
+from .tasks import export_tasks_to_csv
+from .models import Task, Category, Tag
+
+from .serializers import TagSerializer, TaskSerializer, CategorySerializer
+from django_filters.rest_framework import DjangoFilterBackend
+
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
-from rest_framework.decorators import action
 from drf_spectacular.types import OpenApiTypes
 
 class CategoryViewSet(viewsets.ModelViewSet):
@@ -18,6 +23,8 @@ class CategoryViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return Category.objects.none()
         return Category.objects.filter(owner=self.request.user).order_by('-created_at')
 
     def perform_create(self, serializer):
@@ -132,6 +139,9 @@ class TaskViewSet(viewsets.ModelViewSet):
         return Response({'message': 'Task marked as done'})
     
     def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return Task.objects.none()
+
         # 1. Base queryset
         queryset = Task.objects.filter(owner=self.request.user)
         
@@ -165,3 +175,50 @@ class TaskViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
+        
+class ExpotrtTasksView(APIView):
+    permission_classes=[IsAuthenticated] 
+    
+    @extend_schema(
+        summary="Export tasks to CSV",
+        description="Export user's tasks to CSV file and send via email",
+        responses={
+            200: {
+                'type': 'object',
+                'properties': {
+                    'message': {
+                        'type': 'string',
+                        'example': 'Tasks exported successfully'
+                    }
+                }
+            },
+            400: {
+                'type': 'object',
+                'properties': {
+                    'error': {
+                        'type': 'string',
+                        'example': 'Email is required to export tasks'
+                    }
+                }
+            }
+        }
+    )
+    def post(self, request):
+        user=request.user
+        
+        if not user.email:
+            return Response(
+                {'error': 'Email is required to export tasks'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        export_tasks_to_csv.delay(user.id)
+        return Response(
+            {'message': 'Tasks exported successfully'},
+            status=status.HTTP_200_OK
+        )    
+        
+        
+class TagListCreatView(generics.ListCreateAPIView):
+    queryset = Tag.objects.all()        
+    serializer_class = TagSerializer
+    permission_classes = [IsAuthenticated]

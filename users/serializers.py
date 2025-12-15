@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User
+from .models import User, Profile
 from django.contrib.auth.password_validation import validate_password
  
  
@@ -46,4 +46,16 @@ class UserRegisterSerializer(serializers.ModelSerializer):
             email=validated_data.get('email'),            
         )
         return user
+    
+    
+class ProfileSerializer(serializers.ModelSerializer):   
+    phone_number = serializers.CharField(source='user.phone_number', read_only=True) 
+    
+    avatar = serializers.ImageField(required=False)
+
+    class Meta:
+        model = Profile
+        fields = ['phone_number', 'avatar', 'bio','created_at']
+        read_only_fields = ['created_at']
+
     

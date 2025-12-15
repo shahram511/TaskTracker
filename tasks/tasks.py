@@ -1,9 +1,11 @@
 from celery import shared_task
-from django.core.mail import send_mail
+from django.core.mail import send_mail, EmailMessage
 from django.conf import settings 
 from datetime import timedelta
 from django.utils import timezone
-from .models import Task
+from .models import Task, User
+import csv
+import io
 
 print("celery is working")
 @shared_task
@@ -37,4 +39,44 @@ def send_daily_reminders():
             )
             email_count +=1
     return f"Done! sent {email_count} reminder emails"        
-    #tell celery when to run this task
+    #tell celery when to run this task\
+        
+        
+@shared_task        
+def export_tasks_to_csv(user_id):
+    try:        
+        user = User.objects.get(id=user_id)
+        
+    except User.DoesNotExist:
+        return f"User with id {user_id} does not exist"
+            
+    Tasks = Task.objects.filter(owner=user)     
+    csv_buffer = io.StringIO()  
+    writer = csv.writer(csv_buffer) 
+
+
+    writer.writerow(['Title', 'Description', 'Due Date', 'Status', 'Priority'])
+    for task in Tasks:
+        writer.writerow([
+            task.title,
+            task.description,
+            task.due_date,
+            task.status,
+            task.priority,
+        ])
+        
+    email = EmailMessage(
+        subject='Your Tasks Report',
+        body='Attached is the CSV file containing your tasks.',
+        from_email=settings.EMAIL_HOST_USER,
+        to=[user.email],
+
+    )  
+    
+    email.attach('tasks.csv', csv_buffer.getvalue(), 'text/csv')
+
+    email.send()
+    return f"Done! sent the tasks report to {user.email}"
+        
+            
+

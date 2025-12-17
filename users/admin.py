@@ -14,15 +14,11 @@ class ProfileInline(admin.StackedInline):
     readonly_fields = ['created_at']
 
     
-
 class UserAdmin(BaseUserAdmin):
-
-  
     ordering = ['phone_number']
     list_display = ['phone_number', 'email', 'first_name', 'last_name', 'is_active', 'is_staff']
     inlines = [ProfileInline]
     
-
     fieldsets = (
         (None, {'fields': ('phone_number', 'password')}),
         ('Personal info', {'fields': ('first_name', 'last_name', 'email')}),  
@@ -33,10 +29,9 @@ class UserAdmin(BaseUserAdmin):
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('phone_number', 'password'),
+            'fields': ('phone_number', 'password1', 'password2', 'email', 'first_name', 'last_name'),
         }),
     )
-
 
 class ProfileAdmin(admin.ModelAdmin):
     list_display = ['user', 'avatar', 'bio', 'created_at']

@@ -12,8 +12,11 @@ services:
     depends_on:
       - db
       - redis
-    # متغیرهای محیطی مخصوص داکر
     environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_DB=tasktracker_db
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=secret
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
 
@@ -27,15 +30,14 @@ services:
       - POSTGRES_USER=admin
       - POSTGRES_PASSWORD=secret
 
-  # 3. سرویس ردیس (Redis) - جدید
+  # 3. سرویس ردیس (Redis)
   redis:
     image: redis:7-alpine
     restart: always
 
-  # 4. سرویس سلری ورکر (Celery Worker) - جدید
+  # 4. سرویس سلری ورکر (Celery Worker)
   celery_worker:
     build: .
- 
     command: celery -A config worker -l info
     volumes:
       - .:/app
@@ -43,13 +45,15 @@ services:
       - db
       - redis
     environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_DB=tasktracker_db
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=secret
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
 
- 
   celery_beat:
     build: .
-  
     command: celery -A config beat -l info
     volumes:
       - .:/app
@@ -57,6 +61,10 @@ services:
       - db
       - redis
     environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_DB=tasktracker_db
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=secret
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
 

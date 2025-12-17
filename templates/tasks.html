@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tasks</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; max-width: 600px; margin: auto; }
+
+        /* header styles */
+        .header { display: flex; justify-content: space-between; align-items: center; }
+        .logout-button { background: #dc3545; border: none; padding: 5px 10px; cursor: pointer; color: white; border-radius: 3px; }
+        
+        /* task card styles */
+        .task-card { border: 1px solid #ddd; padding: 15px; margin-bottom: 10px; border-radius: 5px; }
+        .task-card-done { background-color:rgb(217, 230, 218); border-color:rgb(78, 95, 79); }
+        .task-card h3 { margin: 0 0 10px 0; }
+        .badge { padding: 3px 8px; border-radius: 10px; font-size: 12px; background: #eee; margin-right: 5px;}
+
+        /* create form styles */
+        .create-form {background: white; padding: 15px; border-radius: 8px; box-shadow:0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .create-form input, .create-form select {width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        .create-form button { width: 100%; background: #28a745; color: white; padding: 10px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .create-form button:hover { background: #218838;}
+    </style>
+</head>
+<body>
+
+    <div class='header'>
+        <h2>My Tasks List 📝</h2>
+        <div>
+            <button id="exportBtn" onclick="exportTasks()" style="background: #17a2b8; color: white; border: none; padding: 8px 15px; cursor: pointer; border-radius: 5px; margin-right: 10px;">
+                📥 Export CSV
+            </button>
+            <button onclick="logout()" class="logout-btn">Logout</button>
+        </div>
+    </div>
+
+    <div class="create-form">
+        <h3>New Task</h3>
+        <form id="createTaskForm">
+            <input type="text" id="title" placeholder="Task Title (e.g., Buy Milk)" required>
+            <input type="text" id="description" placeholder="Description (Optional)">
+            <select id="priority" required>
+                <option value="">Select Priority</option>
+                <option value="low">Low Priority</option>
+                <option value="medium">Medium Priority</option>
+                <option value="high">High Priority</option>
+            </select>
+            <button type="submit">Add Task +</button>
+        </form>
+    </div>
+
+    <div id='loading'>loading tasks ...</div>
+    <div id='tasks-container'></div>
+
+    <script>
+        // Get the access token from localStorage
+        const token = localStorage.getItem('access_token');
+        const API_URL = '/api/tasks/';  // Fixed: Define API_URL constant
+
+        // If the token is not found, redirect to the login page
+        if (!token){
+            window.location.href = '/api/users/login-panel/';
+        }
+
+        // Function to get priority color
+        function getPriorityColor(priority) {
+            const colors = {
+                'low': '#28a745',      // Green
+                'medium': '#ffc107',   // Yellow/Orange
+                'high': '#dc3545'       // Red
+            };
+            return colors[priority] || '#6c757d';  // Default gray
+        }
+
+        // Function to fetch tasks
+        async function fetchTasks(){
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.status === 401) {
+                    alert('Session expired. Please login again.');
+                    logout();
+                    return;
+                }
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const tasks = data.results || data;
+
+                renderTasks(tasks);
+            } catch (error) {
+                console.error('Error fetching tasks:', error);
+                const container = document.getElementById('tasks-container');
+                document.getElementById('loading').style.display = 'none';
+                container.innerHTML = '<p style="color: red;">Error loading tasks. Please try again.</p>';
+            }
+        }   
+
+        // Get form and add event listener
+        const createForm = document.getElementById('createTaskForm');
+
+        if (!createForm) {
+            console.error('Form not found!');
+        } else {
+            createForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const title = document.getElementById('title').value.trim();
+                const description = document.getElementById('description').value.trim();
+                const priority = document.getElementById('priority').value;
+
+                // Validation
+                if (!title) {
+                    alert('Please enter a task title');
+                    return;
+                }
+
+                if (!priority) {
+                    alert('Please select a priority');
+                    return;
+                }
+
+                const newTask = {
+                    title: title,
+                    description: description || '',
+                    priority: priority.toLowerCase(),
+                    status: 'todo'
+                };
+
+                try {
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify(newTask)
+                    });
+
+                    if (response.ok) {
+                        createForm.reset();
+                        fetchTasks();
+                    } else {
+                        const errdata = await response.json();
+                        console.error('Error response:', errdata);
+                        alert('Error creating task: ' + (errdata.detail || JSON.stringify(errdata)));
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Network error. Please check your connection and try again.');
+                }
+            });
+        }
+
+        // Function to render tasks
+        function renderTasks(tasks) {
+            const container = document.getElementById('tasks-container');
+            document.getElementById('loading').style.display = 'none';
+            
+            if (!tasks || tasks.length === 0) {
+                container.innerHTML = '<p>No tasks found. Create a new task to get started! 🎉</p>';
+                return;
+            }
+            
+            const reversedTasks = [...tasks].reverse(); 
+
+            container.innerHTML = reversedTasks.map(task => `
+                <div class="task-card ${task.status === 'done' ? 'task-card-done' : ''}" data-task-id="${task.id}">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div style="flex: 1;">
+                            <h3>${task.title}</h3>
+                            <p style="color: #666; font-size: 0.9em; margin: 5px 0;">${task.description || ''}</p>
+                            <div style="margin-top: 10px;">
+                                <span class="badge" style="background: ${getPriorityColor(task.priority)}; color: white;">${task.priority}</span>
+                                <span class="badge status-badge">${task.status}</span>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; gap: 5px; align-items: flex-start;">
+                            <button onclick="toggleStatus(${task.id}, '${task.status}')" class="toggle-button" 
+                                style="background: ${task.status === 'done' ? '#ffc107' : '#28a745'}; 
+                                       border: none; 
+                                       color: white; 
+                                       cursor: pointer; 
+                                       padding: 8px 12px; 
+                                       border-radius: 4px; 
+                                       font-size: 14px;
+                                       transition: all 0.2s;" 
+                                title="${task.status === 'done' ? 'Mark as Todo' : 'Mark as Done'}">
+                                ${task.status === 'done' ? '↩️ Undo' : '✅ Done'}
+                            </button>
+                            <button onclick="deleteTask(${task.id})" 
+                                style="background: #dc3545; 
+                                       border: none; 
+                                       color: white; 
+                                       cursor: pointer; 
+                                       padding: 8px 12px; 
+                                       border-radius: 4px;
+                                       font-size: 14px;
+                                       transition: all 0.2s;" 
+                                title="Delete">
+                                🗑️ Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Function to delete task
+        async function deleteTask(taskId) {
+            if (!confirm('Are you sure you want to delete this task?')) return;
+
+            try {
+                const response = await fetch(`${API_URL}${taskId}/`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.status === 204 || response.ok) {
+                    fetchTasks();  // Refresh the task list
+                } else {
+                    const errorData = await response.json().catch(() => ({}));
+                    alert('Error deleting task: ' + (errorData.detail || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Network error. Please try again.');
+            }
+        }
+
+        // Function to toggle task status (Todo <-> Done) - OPTIMIZED
+        async function toggleStatus(taskId, currentStatus) {
+            const newStatus = currentStatus === 'done' ? 'todo' : 'done';
+            
+            const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
+            if (!taskCard) return;
+
+            const statusBadge = taskCard.querySelector('.status-badge');
+            const toggleButton = taskCard.querySelector('.toggle-button');
+            
+            // Update button immediately
+            if (toggleButton) {
+                toggleButton.innerHTML = newStatus === 'done' ? '↩️ Undo' : '✅ Done';
+                toggleButton.style.background = newStatus === 'done' ? '#ffc107' : '#28a745';
+                toggleButton.title = newStatus === 'done' ? 'Mark as Todo' : 'Mark as Done';
+            }
+            
+            // Update status badge immediately
+            if (statusBadge) {
+                statusBadge.textContent = newStatus;
+            }
+            
+            // Update card class immediately
+            if (newStatus === 'done') {
+                taskCard.classList.add('task-card-done');
+            } else {
+                taskCard.classList.remove('task-card-done');
+            }
+
+            // Show loading state
+            if (toggleButton) {
+                toggleButton.disabled = true;
+                toggleButton.style.opacity = '0.6';
+            }
+
+            try {
+                const response = await fetch(`${API_URL}${taskId}/`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ status: newStatus })
+                });
+
+                if (response.ok) {
+                    if (toggleButton) {
+                        toggleButton.disabled = false;
+                        toggleButton.style.opacity = '1';
+                    }
+                } else {
+                    // Revert on error
+                    const errorData = await response.json().catch(() => ({}));
+                    
+                    if (statusBadge) statusBadge.textContent = currentStatus;
+                    if (toggleButton) {
+                        toggleButton.innerHTML = currentStatus === 'done' ? '↩️ Undo' : '✅ Done';
+                        toggleButton.style.background = currentStatus === 'done' ? '#ffc107' : '#28a745';
+                        toggleButton.disabled = false;
+                        toggleButton.style.opacity = '1';
+                    }
+                    if (currentStatus === 'done') {
+                        taskCard.classList.add('task-card-done');
+                    } else {
+                        taskCard.classList.remove('task-card-done');
+                    }
+                    
+                    alert('Error updating status: ' + (errorData.detail || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                
+                // Revert on error
+                if (statusBadge) statusBadge.textContent = currentStatus;
+                if (toggleButton) {
+                    toggleButton.innerHTML = currentStatus === 'done' ? '↩️ Undo' : '✅ Done';
+                    toggleButton.style.background = currentStatus === 'done' ? '#ffc107' : '#28a745';
+                    toggleButton.disabled = false;
+                    toggleButton.style.opacity = '1';
+                }
+                if (currentStatus === 'done') {
+                    taskCard.classList.add('task-card-done');
+                } else {
+                    taskCard.classList.remove('task-card-done');
+                }
+                
+                alert('Network error. Please try again.');
+            }
+        }
+
+        // Function to logout
+        function logout(){
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            window.location.href = '/api/users/login-panel/';
+        }
+        // Function to export tasks to CSV
+        async function exportTasks() {
+            const btn = document.getElementById('exportBtn');
+            try {
+                // Optional: disable button + show loading text
+                if (btn) {
+                    btn.disabled = true;
+                    btn.textContent = 'Exporting...';
+                }
+
+                const response = await fetch('/api/export-tasks/', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json().catch(() => ({}));
+                    alert(data.message || 'Tasks exported successfully we email it to you after a few seconds');
+                } else {
+                    const errorData = await response.json().catch(() => ({}));
+                    alert('Error exporting tasks: ' + (errorData.detail || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Network error. Please try again.');
+            } finally {
+                // Re-enable button
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = '📥 Export CSV';
+                }
+            }
+        }
+       
+        // Execute fetchTasks when the page loads
+        fetchTasks();
+    </script>
+</body>
+</html></html>

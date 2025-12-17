@@ -89,7 +89,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR), 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -103,19 +103,27 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'tasktracker',  
-        'USER': 'postgres',
-        'PASSWORD': '1234567',
-        'HOST': 'localhost',              
-        'PORT': 5432,
+#database configuration - SQLlite for local development and postgres fot Docker
+if os.environ.get('POSTGRES_HOST') == 'db' :
+    #for docker running
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('POSTGRES_DB', 'tasktracker_db'),  
+            'USER': os.environ.get('POSTGRES_USER', 'admin'),
+            'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'secret'),
+            'HOST': os.environ.get('POSTGRES_HOST', '127.0.0.1'),              
+            'PORT': 5432,
+        }
     }
-}
-
+else:
+    #for local development
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -183,8 +191,8 @@ EMAIL_USE_SSL = False
 
 
 
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
-CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
 CELERY_TIMEZONE = 'UTC'
 
 

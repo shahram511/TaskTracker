@@ -50,12 +50,22 @@ pip install -r requirements.txt
 ```
 
 ### 5. Environment Variables
-Create a `.env` file or configure your settings to include:
-```bash
+Create a `.env` file in the project root:
+h
+# Django Settings
 DEBUG=True
 SECRET_KEY=your-secret-key-here
+
+# Database (Optional - defaults to SQLite)
+# DATABASE_URL=postgresql://user:password@localhost:5432/tasktracker
+
+# Email Configuration
 EMAIL_HOST_USER=your_email@gmail.com
 EMAIL_HOST_PASSWORD=your_app_password
+
+# Celery (Optional - defaults shown)
+# CELERY_BROKER_URL=redis://localhost:6379/0
+# CELERY_RESULT_BACKEND=redis://localhost:6379/0**Note:** Never commit `.env` file to version control!
 ```
 
 ### 6. Run Migrations
@@ -83,6 +93,15 @@ celery -A config beat -l info
 ```
 
 ---
+## 🧪 Running Tests
+ash
+# Run all tests
+python manage.py test
+
+
+
+# Run with verbose output
+python manage.py test -v 2
 
 ## 🐳 Running with Docker
 

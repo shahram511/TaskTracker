@@ -43,5 +43,9 @@ class ProfileView(generics.RetrieveUpdateAPIView):
         return self.request.user.profile
     
 
-
-
+def login_page_view(request):
+    return render(request, 'login.html')
+    
+def tasks_page_view(request):
+    return render (request, 'tasks.html')
+    
